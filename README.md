@@ -423,5 +423,11 @@ Use Git Bash or WSL, not CMD. Handled automatically by setup.py.
 AGPL 3.0 — see [LICENSE](LICENSE).
 
 ---
+## Contributors
+
+| | Name | Role |
+|---|---|---|
+| 👤 | [Your Name](https://github.com/AbdoKnbGit) | Creator & Developer |
+| 🤖 | Claude (Anthropic) | AI Pair Programmer |
 
 *Local Docker · No cloud dependency · Anthropic cache-optimized · [AbdoKnbGit/claude-code-memory](https://github.com/AbdoKnbGit/claude-code-memory)*
