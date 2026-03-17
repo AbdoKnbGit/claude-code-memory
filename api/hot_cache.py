@@ -38,7 +38,7 @@ from loguru import logger
 
 
 MAX_ENTRIES  = 200
-BLOCK_TTL    = 3600
+BLOCK_TTL    = 4500
 
 
 def get_model_pricing(model: str) -> tuple[float, float, float, float]:

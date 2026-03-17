@@ -4,7 +4,7 @@
 
 # claude-code-memory
 
-**Claude Code has no memory. We fixed that.**
+**Claude Code has no memory. We added persistent memory and token-efficient context.**
 
 *Memory persists. Money stays in your pocket.*
 
@@ -56,6 +56,37 @@ Setup starts the Docker container, sets `ANTHROPIC_BASE_URL=http://localhost:808
 
 > **No `ANTHROPIC_API_KEY` needed.** The proxy uses your existing Claude Code OAuth token. Nothing changes in how you authenticate.
 
+---
+
+### Every time you start Claude Code
+
+**Before opening a project, make sure the container is running:**
+
+```bash
+docker ps
+```
+
+You should see `cc-nim-memory` in the list. If not:
+
+```bash
+docker compose up -d
+```
+
+**Inside Claude Code**, open `/mcp` — you should see **cc-memory** listed as connected. If it shows as disconnected, restart Claude Code after confirming the container is running.
+
+---
+
+### Initializing memory for a new project
+
+Memory initialization is a **one-time step per project**. After that, it runs automatically every session.
+
+If Claude Code did not initialize automatically, run this in the Claude Code chat:
+
+```
+cc initialize the memory
+```
+
+Claude will call `memory_init`, write the config files, and confirm. **Restart Claude Code after.**
 
 ---
 
@@ -88,6 +119,18 @@ claude-code-memory runs a local Docker proxy between Claude Code and the Anthrop
 **Tool definition filtering.** Claude Code sends ~55,000 tokens of tool definitions with every single request. The proxy tracks which tools were used in the last four turns, keeps those plus a core set, and strips everything else. ~55,000 tokens becomes ~2,400. You pay for what you actually use.
 
 ---
+
+## What Claude Code cannot do alone
+
+| | Without claude-code-memory | With claude-code-memory |
+|---|---|---|
+| Memory between sessions | ❌ starts from zero every time | ✅ context injected automatically |
+| Cache after 5 min break | ❌ full cold start | ✅ warm up to 1 hour |
+| Tool token cost | ❌ ~55,000 tokens every turn | ✅ ~2,400 tokens (filtered) |
+| Long session cost curve | ❌ grows linearly, no ceiling | ✅ compression keeps it flat |
+| Past decisions | ❌ re-read files every session | ✅ stored and recalled semantically |
+
+---
 ## Best practices
 
 ### Initialization
@@ -99,7 +142,7 @@ When you open a new project, claude-code-memory checks for `.mcp.json` locally b
 **If it did not initialize automatically** — this only needs to be done once per project — tell Claude explicitly:
 
 ```
-initialize memory for this project
+cc initialize the memory
 ```
 
 Claude will check for the config files, create the memory database, and confirm. Restart Claude Code after.
@@ -168,23 +211,23 @@ Takes 10–30 seconds. Use this any time semantic search feels off.
 
 ---
 
-## What Claude Code cannot do alone
+## Dashboard
 
-| | Without claude-code-memory | With claude-code-memory |
-|---|---|---|
-| Memory between sessions | ❌ starts from zero every time | ✅ context injected automatically |
-| Cache after 5 min break | ❌ full cold start | ✅ warm up to 1 hour |
-| Tool token cost | ❌ ~55,000 tokens every turn | ✅ ~2,400 tokens (filtered) |
-| Long session cost curve | ❌ grows linearly, no ceiling | ✅ compression keeps it flat |
-| Past decisions | ❌ re-read files every session | ✅ stored and recalled semantically |
+Open **http://localhost:8082** after starting the container.
 
----
+- Live session activity: cache hits, writes, costs per turn
+- Memory entries browser: all entries with pin status and scores
+- Injection history: what was loaded each session and cost
+- Real-time event stream as Claude works
+
+> **Note:** a new project does not appear in the dashboard until after the first `store` or `pin` action in that session. This is expected — the project registers on first save.
+
 
 ## Performance
 
 ### Benchmark methodology
 
-A synthetic Python/FastAPI codebase was built specifically for this test — 2,200 lines across 8 files with 4 planted bugs, a full pytest suite, and a 400-line application log. The benchmark is publicly available in the repository under `benchmark/` so anyone can reproduce it.
+A synthetic Python/FastAPI codebase was built specifically for this test — 2,200 lines across 8 files with 4 planted bugs, a full pytest suite, and a 400-line application log.
 
 Both runs used identical prompts, identical steps, and identical Claude Code settings. Sessions ran in separate windows with a 6-minute gap between them to expire Anthropic's native 5-minute cache. The proxy run started with a wiped Docker volume — no accumulated memory advantage on sessions 1–4.
 
@@ -203,8 +246,21 @@ The only variable between the two runs was whether the proxy was active. Model, 
 ### Results
 
 8 sessions, same codebase, same tasks — run with and without the proxy. All sessions used Opus 4.6.
+<img src="docs/benchmark.PNG" alt="Benchmark results" width="700" />
 
-![Benchmark — No-proxy vs cc-memory cost per session](docs/benchmark.png)
+### Without proxy
+
+<img src="docs/P1-NOP.PNG" alt="Benchmark — No proxy cost per session" width="700" />
+
+### With cc-memory proxy
+
+<img src="docs/P1-P.PNG" alt="Benchmark — cc-memory cost per session" width="700" />
+
+### Side by side
+
+<img src="docs/P2-NOP.PNG" alt="Benchmark — No-proxy vs cc-memory comparison" width="700" />
+
+<img src="docs/P2-P.PNG" alt="Benchmark — Full results" width="700" />
 
 | Session | What happened | No-proxy | cc-memory |
 |---|---|---|---|
@@ -257,7 +313,7 @@ Note that the month-4 jump reflects switching from Sonnet to Opus — Opus costs
 
 > Complete request flow from Claude Code through every proxy layer to the Anthropic API and back. Open the image in a new tab for full resolution and zoom.
 
-<img src="docs/diagram.png" alt="claude-code-memory full architecture diagram" style="max-width:100%; cursor:zoom-in;" />
+<img src="docs/cc-memory-clean-architecture.png" alt="claude-code-memory full architecture diagram" style="max-width:100%; cursor:zoom-in;" />
 
 </details>
 
@@ -337,23 +393,13 @@ Available inside Claude Code automatically on port 8083. Use plain language — 
 
 ---
 
-## Dashboard
-
-Open **http://localhost:8082** after starting the container.
-
-- Live session activity: cache hits, writes, costs per turn
-- Memory entries browser: all entries with pin status and scores
-- Injection history: what was loaded each session and cost
-- Real-time event stream as Claude works
-
-> **Note:** a new project does not appear in the dashboard until after the first `store` or `pin` action in that session. This is expected — the project registers on first save.
 
 ---
 
 ## Troubleshooting
 
 **"Memory not initialized"**
-Run `initialize memory for this project`, then restart Claude Code. Only needed once per project.
+Run `cc initialize the memory`, then restart Claude Code. Only needed once per project.
 
 **Search returns wrong or empty results**
 Run `reindex memory for this project`.

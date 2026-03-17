@@ -640,15 +640,145 @@ def setup_claude_md(base_url):
     hdr("Step 6/6 - CLAUDE.md + Verify")
 
     target = CLAUDE_DIR / "CLAUDE.md"
-    source = Path("CLAUDE.md")
+    MARKER = "# cc-memory"
+
+    NEW_CONTENT = f"""{MARKER}
+# CLAUDE.md — Memory Rules
+
+---
+## ⚠️ MANDATORY FIRST ACTION — BEFORE ANYTHING ELSE
+
+**Before reading the user's message. Before thinking. Before responding.**
+**Run this check immediately when the session starts:**
+
+```bash
+ls .mcp.json 2>/dev/null && echo "EXISTS" || echo "MISSING"
+```
+
+### If result is MISSING:
+1. `Bash("pwd")` → get the current path
+2. `memory_init(project_path="<FULL_PATH>")`
+3. Write the two generated files exactly as returned
+4. Output ONLY this — nothing else:
+   `✅ Memory ready for **<folder>**. Please restart Claude Code.`
+5. **FULL STOP.** Do not read the user message. Do not continue. Wait.
+
+### If result is EXISTS:
+- Boot is done. Now read the user's message and proceed normally.
+- Do NOT call any memory tool yet. Just answer.
+
+> This check runs ONCE per session, on the very first exchange, no exceptions.
+> Even if the user says "hello" or asks something simple — check first.
+
+---
+## WHEN TO CALL MEMORY TOOLS
+
+```
+User sends a message (boot check already done above)
+│
+├─ First message of session AND it's a project question?
+│   └─ memory_remember(project_id="<folder>") — ONCE, silently, then answer
+│
+├─ Any question about this project's code, config, stack, or decisions?
+│   (what port, what stack, how does X work, what did we use, where is Y)
+│   └─ memory_context(query="<user message>", project_id="<folder>")
+│       Score < 0.60 → nothing found → answer normally
+│
+├─ User says "search" / "find" / "do we have X"?
+│   └─ memory_search(query="<what>", project_id="<folder>")
+│
+└─ Everything else → answer directly, no memory call
+```
+
+`memory_remember` — first project question only, once per session, never again.
+`memory_context` — every project question after the first. Silent.
+`memory_search` — only when user explicitly asks to search.
+
+---
+## SAVING TO MEMORY
+
+**When to suggest:** a meaningful technical decision was just made:
+- Bug fixed with non-obvious solution
+- Architecture decision confirmed
+- Feature completed
+- Tech choice locked in
+
+**How:**
+1. Call `memory_suggest(context="<one sentence>", project_id="<folder>")`
+2. Append exactly this line — no variations:
+```
+💾 Store in memory? `store` · `pin` · `skip`
+```
+Use `store`/`pin` — never `save` (intercepted by editor).
+
+**User replies:**
+- `store` → `memory_save(text="<one sentence>", project_id="<folder>", pin=False)`
+- `pin`   → `memory_save(text="<one sentence>", project_id="<folder>", pin=True)`
+- `skip` or silence → nothing
+
+**Save format:** plain text only. No emojis, no markdown. Max 30 tokens. WHAT + WHY + constraint.
+Never call `memory_save()` without explicit user confirmation.
+
+**After every save:** if entries > 10 OR tokens > 350 → call `memory_reduce(project_id="<folder>")` immediately.
+
+---
+## OUTPUT CAP — COST CRITICAL
+
+Every output token is uncached input on every future call.
+
+| Situation | Max output |
+|---|---|
+| After writing 3+ files | 2 sentences |
+| After bulk bash/install | 1 sentence |
+| Tool confirmation | Silent, move to next step |
+| Mid-task between tool calls | 0 filler |
+| User asks "what did you do" | Then and only then summarize |
+
+Never generate: file lists, directory trees, feature recaps, setup instructions.
+
+---
+## OTHER RULES
+
+**Conflict:** memory says X, user says Y → "Memory says X — you're saying Y. Which is correct?" Then update.
+
+**project_id:** always explicit on every memory tool call. Use the CWD folder name. Never rely on env defaults.
+
+**memory_manage / memory_clear / memory_reindex / memory_export:** only on explicit user request. Never auto-call.
+
+---
+## TOOL REFERENCE
+
+| Tool | When |
+|---|---|
+| `memory_remember(project_id)` | First project question of session — once only |
+| `memory_context(query, project_id)` | Every project question after the first |
+| `memory_search(query, project_id)` | User explicitly asks to search |
+| `memory_suggest(context, project_id)` | Decision detected — before asking user |
+| `memory_save(text, project_id, pin)` | After user confirms with "store" or "pin" |
+| `memory_reduce(project_id)` | Auto after save if over budget |
+| `memory_manage(action, id, project_id)` | User request only |
+| `memory_status(project_id)` | User asks |
+| `memory_init(project_path)` | Only if .mcp.json missing — handled in boot |
+
+---
+"""
+
+    CLAUDE_DIR.mkdir(parents=True, exist_ok=True)
 
     if target.exists():
-        green("CLAUDE.md already exists — skipping (never overwritten by setup)")
-    elif source.exists():
-        shutil.copy2(source, target)
-        green(f"CLAUDE.md installed to {target}")
+        existing = target.read_text(encoding="utf-8")
+        if MARKER in existing:
+            # Already injected — skip to avoid duplicates
+            green("CLAUDE.md already configured — skipping")
+        else:
+            # Concat: our rules first, then the existing content
+            combined = NEW_CONTENT + "\n" + existing
+            target.write_text(combined, encoding="utf-8")
+            green(f"CLAUDE.md updated — memory rules prepended to existing content")
     else:
-        warn("CLAUDE.md not found in project — skipping")
+        # Fresh install — just write ours
+        target.write_text(NEW_CONTENT, encoding="utf-8")
+        green(f"CLAUDE.md installed to {target}")
 
     print("\n  -- Verification --")
     errors = []
