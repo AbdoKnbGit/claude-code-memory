@@ -427,7 +427,7 @@ AGPL 3.0 — see [LICENSE](LICENSE).
 
 | | Name | Role |
 |---|---|---|
-| 👤 | [Your Name](https://github.com/AbdoKnbGit) | Creator & Developer |
-| 🤖 | Claude (Anthropic) | AI Pair Programmer |
+| 👤 | [AbdoKnbGit](https://github.com/AbdoKnbGit) | Creator · Architecture · Vision |
+| 🤖 | [Anthropic](https://github.com/anthropics) (Claude) | AI Pair Programmer · Code Generation · Bug Fixing |
 
 *Local Docker · No cloud dependency · Anthropic cache-optimized · [AbdoKnbGit/claude-code-memory](https://github.com/AbdoKnbGit/claude-code-memory)*
