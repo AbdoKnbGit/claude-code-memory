@@ -683,6 +683,56 @@ def _encode(text: str) -> list[float]:
     return emb
 
 
+_Q_PREFIX = re.compile(
+    r"^(what(?:'s| is| are| was| were| do| does| did)?|"
+    r"where(?:'s| is| are| was| were| do| does| did)?|"
+    r"when(?:'s| is| are| was| were| do| does| did)?|"
+    r"who(?:'s| is| are| was| were)?|"
+    r"which|how(?:'s| is| are| do| does| did| much| many)?|"
+    r"do|does|did|is|are|was|were|can|could|will|would|should|shall|"
+    r"have|has|had)\s+",
+    re.IGNORECASE,
+)
+
+def _to_declarative(query: str) -> str | None:
+    """Strip question syntax to create a declarative echo of a query.
+    Returns None if the query isn't a recognizable question.
+    'what's my name?' → 'my name'
+    'what port do we use?' → 'port we use'
+    'how does auth work?' → 'auth work'
+    """
+    q = query.strip().rstrip("?").strip()
+    m = _Q_PREFIX.match(q)
+    if not m:
+        return None
+    decl = q[m.end():].strip()
+    return decl if len(decl) >= 3 else None
+
+
+def _encode_query(query: str) -> list[float]:
+    """Encode a search query, blending with its declarative form for questions.
+    This bridges the question↔fact embedding gap so 'what's my name?'
+    lands closer to 'User's name is Ali' in vector space.
+    """
+    emb_q = _encode(query)
+    decl = _to_declarative(query)
+    if decl is None:
+        return emb_q
+    emb_d = _encode(decl)
+    # Average the two embeddings (70% original, 30% declarative)
+    blended = [(a * 0.7 + b * 0.3) for a, b in zip(emb_q, emb_d)]
+    return blended
+
+
+_KW_STOPWORDS = frozenset({
+    "what", "where", "when", "which", "who", "how", "does", "did",
+    "the", "this", "that", "with", "from", "have", "has", "was",
+    "were", "been", "are", "for", "not", "but", "and", "our",
+    "your", "their", "about", "into", "over", "can", "will",
+    "just", "also", "than", "then", "some", "other",
+})
+
+
 def _get_client() -> chromadb.PersistentClient:
     """Return ChromaDB PersistentClient singleton."""
     global _chroma_client
@@ -1257,7 +1307,7 @@ def _search(
         return _search_fallback(query, project_id, top_k)
 
     try:
-        emb = _precomputed_emb if _precomputed_emb is not None else _encode(query)
+        emb = _precomputed_emb if _precomputed_emb is not None else _encode_query(query)
 
         coll = _get_collection(project_id)
         count = coll.count()
@@ -1282,13 +1332,24 @@ def _search(
             "reduce":       0.85,
         }
 
+        query_words = {w.lower() for w in re.findall(r"\w{3,}", query)} - _KW_STOPWORDS
+
         scored = []
         for doc, dist, meta in all_results:
             semantic_sim = max(0.0, 1.0 - dist)
             t_weight = _temporal_weight(meta.get("created_at", ""))
             p_boost = 1.5 if meta.get("pinned", 0) else 1.0
             confidence = confidence_map.get(meta.get("source", "auto"), 0.7)
-            final_score = semantic_sim * t_weight * p_boost * confidence
+
+            # Keyword overlap boost: bridges question↔fact semantic gap
+            if query_words:
+                doc_words = {w.lower() for w in re.findall(r"\w{3,}", doc)} - _KW_STOPWORDS
+                overlap = len(query_words & doc_words) / len(query_words)
+                kw_boost = overlap * 0.15
+            else:
+                kw_boost = 0.0
+
+            final_score = semantic_sim * t_weight * p_boost * confidence + kw_boost
 
             entry_id = meta.get("id", -1)
 
@@ -1385,7 +1446,7 @@ def _search_with_tiers(
         priority_components = ["general"]
         _graph_available = False
 
-    shared_emb = _encode(query)
+    shared_emb = _encode_query(query)
 
     tier1_hits = _search(query, project_id, session_id, top_k, _precomputed_emb=shared_emb)
     for h in tier1_hits:
@@ -1446,6 +1507,7 @@ def _search_with_tiers(
                 distances = res.get("distances", [[]])[0]
                 metadatas = res.get("metadatas", [[]])[0]
 
+                _t2_query_words = {w.lower() for w in re.findall(r"\w{3,}", query)} - _KW_STOPWORDS
                 for i in range(len(documents)):
                     doc = documents[i]
                     dist = distances[i]
@@ -1453,14 +1515,21 @@ def _search_with_tiers(
                     if not meta:
                         continue
                     semantic_sim = max(0.0, 1.0 - dist)
-                    if semantic_sim < 0.60:
+                    # Keyword overlap boost (same as tier 1)
+                    if _t2_query_words:
+                        _t2_doc_words = {w.lower() for w in re.findall(r"\w{3,}", doc)} - _KW_STOPWORDS
+                        _t2_overlap = len(_t2_query_words & _t2_doc_words) / len(_t2_query_words)
+                        _t2_kw_boost = _t2_overlap * 0.15
+                    else:
+                        _t2_kw_boost = 0.0
+                    if semantic_sim + _t2_kw_boost < 0.60:
                         continue
                     if meta.get("session_id") == session_id:
                         continue
                     created_at = str(meta.get("created_at", ""))
                     t_weight  = _temporal_weight(created_at)
                     p_boost   = 1.5 if meta.get("pinned", 0) else 1.0
-                    score = round(min(1.0, semantic_sim * t_weight * p_boost * 1.2), 3)
+                    score = round(min(1.0, (semantic_sim + _t2_kw_boost) * t_weight * p_boost * 1.2), 3)
                     tier2_hits.append({
                         "id":         meta.get("id", -1),
                         "text":       doc,
