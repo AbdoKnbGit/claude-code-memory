@@ -1,0 +1,5 @@
+{"time": "2026-03-14 18:33:26.813331+01:00", "level": "INFO", "message": "Web UI available at http://localhost:8082/ui", "module": "api.app", "function": "create_app", "line": 186}
+{"time": "2026-03-14 18:33:26.824962+01:00", "level": "INFO", "message": "PROJECT_META: loaded 1 project(s) from SQLite", "module": "api.routes", "function": "_init_project_meta_table", "line": 189}
+{"time": "2026-03-14 18:33:26.833633+01:00", "level": "INFO", "message": "PROJECT_META: loaded 1 project(s) from SQLite", "module": "api.routes", "function": "_init_project_meta_table", "line": 189}
+{"time": "2026-03-14 18:33:27.277397+01:00", "level": "DEBUG", "message": "Starting new HTTPS connection (1): us.i.posthog.com:443", "module": "logging", "function": "callHandlers", "line": 1736}
+{"time": "2026-03-14 18:33:28.025466+01:00", "level": "DEBUG", "message": "https://us.i.posthog.com:443 \"POST /batch/ HTTP/1.1\" 200 15", "module": "logging", "function": "callHandlers", "line": 1736}

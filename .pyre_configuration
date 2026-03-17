@@ -1,0 +1,18 @@
+{
+  "source_directories": [
+    "."
+  ],
+  "search_path": [
+    "."
+  ],
+  "exclude": [
+    ".venv",
+    "CC-opt",
+    "__pycache__"
+  ],
+  "python_version": "3.12",
+  "ignore_all_errors": [
+    "chromadb",
+    "sentence_transformers"
+  ]
+}

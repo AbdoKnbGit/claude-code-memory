@@ -1,0 +1,28 @@
+Anomalie 1 — Session start cold write (2,213 tokens)
+→ Évitable à 90%
+Le pre-warm doit fire à la fin de la session précédente, pas après un save. En ce moment _fire_prewarm_after_save ne fire qu'après une écriture mémoire. Il faut aussi le faire dans _save_session_end :
+python# hooks/session_start.py ou _save_session_end() dans routes.py
+# Après la sauvegarde fin de session → pre-warm immédiatement
+_fire_prewarm_after_save(project_id)
+Les 14,078 tokens du system prompt Claude Code sont déjà warm — tu ne peux pas contrôler ça, c'est Anthropic qui les cache. Seul le bloc mémoire (2,213 tokens) est évitable.
+
+Anomalie 2 — 5 Dedup Replays
+→ Inévitable, et c'est une feature
+Claude Code envoie 2-5 requêtes identiques en burst sur chaque tour (preflights + vraie requête). Ton proxy les intercepte et replay depuis le cache au lieu de payer Anthropic à chaque fois. Tu ne veux pas éliminer ça — c'est une économie.
+
+Anomalie 3 — Spike T7 +3,809 tokens
+→ Partiellement évitable
+C'est Claude qui lit un gros fichier avec le tool Read. Deux axes de protection :
+Déjà en place dans ton code — _LARGE_OUTPUT_CHAR_CAP = 3000 dans routes.py tronque les tool_results trop grands. Mais il ne s'active que si le résultat dépasse le cap après être entré dans l'historique.
+Ce qui manque — une compression proactive quand un seul tool_result dépasse le seuil avant de l'ajouter à l'historique. En ce moment _apply_tool_result_summarization résume mais seulement si _TOOL_RESULT_SUMMARIZE_THRESHOLD est dépassé. Si ce threshold est trop haut ou que _memory_call_llm est indisponible, le gros contenu passe quand même.
+Fix simple : baisser TOOL_RESULT_SUMMARIZE_THRESHOLD dans ton .env :
+bashTOOL_RESULT_SUMMARIZE_THRESHOLD=800  # au lieu de 1500
+LARGE_OUTPUT_CAP=2000                # au lieu de 3000
+
+Anomalie 4 — 6 empty stop reasons
+→ Inévitable
+Ce sont les pings keepalive du proxy (max_tokens=1) et les preflights Claude Code. Ils ont intentionnellement peu ou pas d'output. Tu ne peux pas les supprimer — ils maintiennent le cache Anthropic actif entre les tours.
+
+Résumé actionnable :
+AnomalieÉvitable ?ActionSession start cold write✅ 90%Ajouter _fire_prewarm_after_save dans _save_session_endDedup replays❌ featureNe rien changerSpike gros fichiers✅ partielBaisser TOOL_RESULT_SUMMARIZE_THRESHOLD=800 dans .envEmpty stop reasons❌ inévitableNe rien changer
+Le seul fix qui vaut vraiment la peine c'est le pre-warm à la fin de session — il transformera ce 86% warm en ~99% warm dès le premier tour de chaque nouvelle session.

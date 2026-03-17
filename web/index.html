@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CC-Memory | Dashboard</title>
+  <link rel="icon" type="image/png" href="/ui/Logo.png?v=3">
+  <style>
+    :root {
+      --bg: #0B0B0C; --bg2: #141416; --panel: #1D1D21;
+      --border: #2C2C32; --text: #F1F1F3; --muted: #8E8EA0;
+      --primary: #7C4DFF; --primaryLight: #B388FF; --primaryDim: #2d1b6b;
+      --green: #4ADE80; --red: #F87171; --blue: #60A5FA;
+      --orange: #fb923c; --pin: #FACC15; --teal: #2dd4bf;
+    }
+    * { margin:0; padding:0; box-sizing:border-box }
+    body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; display:flex; flex-direction:column }
+    ::-webkit-scrollbar { width:5px } ::-webkit-scrollbar-track { background:var(--bg2) } ::-webkit-scrollbar-thumb { background:var(--primaryDim); border-radius:3px }
+
+    /* HEADER */
+    .header { display:flex; align-items:center; justify-content:space-between; padding:8px 16px; background:var(--bg2); border-bottom:1px solid var(--border); flex-shrink:0; gap:12px }
+    .header-left { display:flex; align-items:center; gap:10px }
+    .logo img { height:24px; width:24px; border-radius:4px }
+    .brand { font-size:13px; font-weight:700; color:var(--primaryLight); letter-spacing:.5px }
+    .status { font-size:11px; padding:3px 8px; border-radius:12px; background:var(--panel); border:1px solid var(--border); color:var(--muted) }
+    .status.ok { color:var(--green); border-color:#166534 }
+    .hbtn { background:var(--panel); border:1px solid var(--border); color:var(--text); padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px }
+    .hbtn:hover { background:var(--primaryDim); border-color:var(--primary) }
+    .hbtn.active { background:var(--primaryDim); border-color:var(--primary); color:var(--primaryLight) }
+
+    /* LAYOUT */
+    .main { display:flex; flex:1; overflow:hidden }
+    .sidebar { width:220px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0 }
+    .content { flex:1; overflow:hidden; display:flex; flex-direction:column }
+
+    /* SIDEBAR */
+    .stitle { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1px; padding:12px 12px 6px }
+    .ssearch { padding:0 10px 8px }
+    .ssearch input { width:100%; background:var(--panel); border:1px solid var(--border); color:var(--text); padding:5px 8px; border-radius:6px; font-size:12px }
+    .ssearch input:focus { outline:none; border-color:var(--primary) }
+    .slist { flex:1; overflow-y:auto; padding:0 6px 8px }
+    .tproject { margin-bottom:2px }
+    .tlabel { display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px }
+    .tlabel:hover { background:var(--panel) }
+    .tlabel.active { background:var(--primaryDim); color:var(--primaryLight) }
+    .ticon { font-size:9px; color:var(--muted); transition:.2s }
+    .ticon.open { transform:rotate(90deg) }
+    .tname { flex:1; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+    .tbadge { font-size:10px; background:var(--panel); padding:1px 6px; border-radius:8px; color:var(--muted); flex-shrink:0 }
+    .tlabel.active .tbadge { background:rgba(124,77,255,.3); color:var(--primaryLight) }
+    .tsessions { margin-left:12px }
+    .tsession { display:flex; align-items:center; gap:4px; padding:4px 8px; border-radius:5px; cursor:pointer; font-size:11px; color:var(--muted) }
+    .tsession:hover { background:var(--panel) }
+    .tentries { margin-left:12px }
+    .tentry { display:flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px; cursor:pointer; font-size:11px }
+    .tentry:hover { background:var(--panel) }
+    .tentry.active { background:var(--primaryDim) }
+    .tentry.pinned .ttext { color:var(--pin) }
+    .tid { color:var(--primaryDim); min-width:28px; font-size:10px }
+    .ttext { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 }
+
+    /* TABS */
+    .tabs { display:flex; gap:2px; padding:8px 12px 0; border-bottom:1px solid var(--border); background:var(--bg2); flex-shrink:0 }
+    .tab { background:none; border:none; color:var(--muted); padding:6px 14px; cursor:pointer; font-size:12px; border-radius:6px 6px 0 0; border-bottom:2px solid transparent }
+    .tab:hover { color:var(--text) }
+    .tab.active { color:var(--primaryLight); border-bottom-color:var(--primary); background:var(--panel) }
+    .tcontent { display:none; flex:1; overflow-y:auto; padding:16px }
+    .tcontent.show { display:block }
+
+    /* STATS GRID */
+    .sgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-bottom:16px }
+    .scard { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px 14px }
+    .scard.hi { border-color:rgba(124,77,255,.4) }
+    .scard.green { border-color:rgba(74,222,128,.3) }
+    .scard.red { border-color:rgba(248,113,113,.3) }
+    .slabel { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px }
+    .sval { font-size:22px; font-weight:700; color:var(--text); line-height:1 }
+    .sval.hi { color:var(--primaryLight) }
+    .sval.green { color:var(--green) }
+    .sval.red { color:var(--red) }
+    .ssub { font-size:10px; color:var(--muted); margin-top:3px }
+
+    /* CHART */
+    .chart-wrap { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px }
+    .chart-title { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center }
+    canvas { display:block; width:100%; height:120px }
+
+    /* COMPONENT BARS */
+    .comp-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px }
+    .comp-bar-wrap { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px }
+    .comp-item { margin-bottom:6px }
+    .comp-label { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:3px }
+    .comp-label span:last-child { color:var(--text) }
+    .comp-track { height:4px; background:var(--bg2); border-radius:2px }
+    .comp-fill { height:100%; border-radius:2px; background:var(--primary); transition:.5s }
+
+    /* NOTIFICATIONS */
+    .notif-list { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:16px; max-height:200px; overflow-y:auto }
+    .notif-item { display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); font-size:11px }
+    .notif-item:last-child { border-bottom:none }
+    .notif-dot { width:6px; height:6px; border-radius:50%; background:var(--primary); margin-top:3px; flex-shrink:0 }
+    .notif-dot.save { background:var(--green) }
+    .notif-dot.cache { background:var(--teal) }
+    .notif-dot.error { background:var(--red) }
+    .notif-dot.session { background:var(--orange) }
+    .notif-msg { flex:1; color:var(--text); line-height:1.4 }
+    .notif-time { color:var(--muted); flex-shrink:0 }
+
+    /* ENTRIES TABLE */
+    .tbl { overflow-x:auto }
+    table { width:100%; border-collapse:collapse; font-size:12px }
+    th { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.5px; background:var(--bg2); position:sticky; top:0; z-index:1 }
+    td { padding:7px 10px; border-bottom:1px solid rgba(44,44,50,.5) }
+    tr:hover td { background:var(--panel) }
+    tr.clickable { cursor:pointer }
+    .etag { background:var(--primaryDim); color:var(--primaryLight); padding:2px 6px; border-radius:4px; font-size:10px; margin-right:2px }
+    .etag.pin { background:rgba(250,204,21,.2); color:var(--pin) }
+    .etag.src { background:var(--panel); color:var(--muted); border:1px solid var(--border) }
+    .comp-tag { padding:2px 6px; border-radius:4px; font-size:10px; font-weight:600 }
+    .comp-auth { background:rgba(248,113,113,.15); color:var(--red) }
+    .comp-api { background:rgba(96,165,250,.15); color:var(--blue) }
+    .comp-db { background:rgba(74,222,128,.15); color:var(--green) }
+    .comp-ui { background:rgba(124,77,255,.15); color:var(--primaryLight) }
+    .comp-infra { background:rgba(251,146,60,.15); color:var(--orange) }
+    .comp-test { background:rgba(45,212,191,.15); color:var(--teal) }
+    .comp-general { background:var(--panel); color:var(--muted) }
+
+    /* ENTRY DETAIL */
+    .edetail { background:var(--panel); border:1px solid var(--primary); border-radius:8px; padding:16px; margin-bottom:16px }
+    .ehead { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px }
+    .eid { font-size:14px; font-weight:700; color:var(--primaryLight) }
+    .emeta { margin-bottom:8px }
+    .etext { background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:12px; font-size:12px; line-height:1.6; white-space:pre-wrap; max-height:200px; overflow-y:auto }
+    .eactions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap }
+    .btn { background:var(--panel); border:1px solid var(--border); color:var(--text); padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px }
+    .btn:hover { border-color:var(--primary) }
+    .btn.red { border-color:rgba(248,113,113,.4) }
+    .btn.red:hover { background:rgba(248,113,113,.15) }
+    .btn.gold { border-color:rgba(250,204,21,.4) }
+    .btn.gold:hover { background:rgba(250,204,21,.1) }
+
+    /* LIVE */
+    .live-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px }
+    .live-dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 2s infinite }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+    .levent { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid rgba(44,44,50,.5); font-size:12px }
+    .levent:last-child { border-bottom:none }
+    .ltime { color:var(--muted); min-width:55px; font-size:10px; font-variant-numeric:tabular-nums; margin-top:1px }
+    .lbadge { padding:2px 7px; border-radius:4px; font-size:10px; font-weight:600; flex-shrink:0; margin-top:1px }
+    .lbadge.mem { background:rgba(124,77,255,.2); color:var(--primaryLight) }
+    .lbadge.hook { background:rgba(74,222,128,.2); color:var(--green) }
+    .lbadge.mcp { background:rgba(96,165,250,.2); color:var(--blue) }
+    .lbadge.auto { background:rgba(251,146,60,.2); color:var(--orange) }
+    .lcontent { flex:1; color:var(--text); line-height:1.4 }
+    .ltokens { color:var(--muted); font-size:10px; margin-top:2px }
+
+    /* LLM TRACE */
+    .trace-stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; margin-bottom:16px }
+    .trace-event { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:8px; transition:border-color .3s }
+    .trace-event.fallback { border-color:rgba(248,113,113,.5); background:rgba(248,113,113,.05) }
+    .trace-event.working { border-color:rgba(251,146,60,.4) }
+    .trace-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap }
+    .trace-status { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700 }
+    .trace-status.ok { background:rgba(74,222,128,.15); color:var(--green) }
+    .trace-status.fail { background:rgba(248,113,113,.15); color:var(--red) }
+    .trace-status.working { background:rgba(251,146,60,.15); color:var(--orange) }
+    .trace-task { font-size:11px; font-weight:600; color:var(--primaryLight) }
+    .trace-model { font-size:10px; color:var(--muted) }
+    .trace-meta { display:flex; gap:12px; font-size:10px; color:var(--muted); flex-wrap:wrap }
+    .trace-meta span { display:flex; align-items:center; gap:3px }
+    .trace-attempts { margin-top:6px; padding-top:6px; border-top:1px solid var(--border); font-size:10px }
+    .trace-attempt { display:flex; gap:8px; padding:2px 0; color:var(--muted) }
+    .trace-attempt.ok { color:var(--green) }
+    .trace-attempt.fail { color:var(--red) }
+    .trace-attempt.retry { color:var(--orange) }
+    .task-table { width:100%; border-collapse:collapse; font-size:11px; margin-bottom:16px }
+    .task-table th { text-align:left; padding:6px 10px; border-bottom:1px solid var(--border); color:var(--muted); font-size:10px; text-transform:uppercase }
+    .task-table td { padding:5px 10px; border-bottom:1px solid rgba(44,44,50,.4) }
+    .task-table tr:hover td { background:var(--panel) }
+    .rate-bar { height:4px; background:var(--bg2); border-radius:2px; width:80px; display:inline-block; vertical-align:middle; margin-left:4px }
+    .rate-fill { height:100%; border-radius:2px; transition:.4s }
+    .trace-filter { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap }
+    .trace-fbtn { background:var(--panel); border:1px solid var(--border); color:var(--muted); padding:3px 10px; border-radius:4px; font-size:10px; cursor:pointer }
+    .trace-fbtn:hover { border-color:var(--primary) }
+    .trace-fbtn.active { background:var(--primaryDim); border-color:var(--primary); color:var(--primaryLight) }
+
+    /* MISC */
+    .empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:200px; color:var(--muted); gap:8px }
+    .empty-icon { font-size:32px; opacity:.4 }
+    .toast { position:fixed; bottom:20px; right:20px; background:var(--panel); border:1px solid var(--border); padding:8px 14px; border-radius:8px; font-size:12px; display:none; z-index:99 }
+    .section-title { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin:16px 0 8px; display:flex; align-items:center; gap:6px }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border) }
+    .badge-count { background:var(--primaryDim); color:var(--primaryLight); padding:1px 6px; border-radius:8px; font-size:10px }
+
+    /* HEALTH DOT */
+    .health-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; transition:background .4s }
+    .health-dot.ok { background:var(--green); box-shadow:0 0 6px var(--green) }
+    .health-dot.degraded { background:var(--orange); box-shadow:0 0 6px var(--orange); animation:pulse 1.5s infinite }
+    .health-dot.error { background:var(--red); box-shadow:0 0 6px var(--red); animation:pulse 1s infinite }
+    .health-dot.unknown { background:var(--muted) }
+    .health-label { font-size:10px; color:var(--muted); margin-left:2px }
+
+    /* INJECTION VISUALIZER */
+    .inj-panel { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px }
+    .inj-bar { display:flex; height:22px; border-radius:4px; overflow:hidden; margin:8px 0 }
+    .inj-bar .full { background:var(--primary); }
+    .inj-bar .head { background:var(--primaryDim); }
+    .inj-bar .skip { background:var(--bg2); }
+    .inj-legend { display:flex; gap:14px; font-size:10px; color:var(--muted); margin-top:4px }
+    .inj-legend span::before { content:''; display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; vertical-align:middle }
+    .inj-legend .l-full::before { background:var(--primary) }
+    .inj-legend .l-head::before { background:var(--primaryDim) }
+    .inj-legend .l-skip::before { background:var(--bg2); border:1px solid var(--border) }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <div class="logo"><img src="Logo.png" alt="Logo"></div>
+      <span class="brand">CC-MEMORY</span>
+      <span class="health-dot unknown" id="healthDot" title="System health"></span>
+      <span class="health-label" id="healthLabel"></span>
+      <span class="status" id="status">connecting...</span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <span id="global-cost" style="font-size:11px;color:var(--muted)"></span>
+      <button class="hbtn" onclick="refresh()">↻ Refresh</button>
+      <button class="hbtn" id="arBtn" onclick="toggleAR()">Auto: OFF</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar">
+      <div class="stitle">Projects</div>
+      <div class="ssearch"><input id="filter" placeholder="Search memories..." oninput="renderTree()"></div>
+      <div class="slist" id="tree"></div>
+    </div>
+
+    <div class="content">
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('overview')">Overview</button>
+        <button class="tab" onclick="showTab('llmtrace')">🔍 LLM Trace</button>
+        <button class="tab" onclick="showTab('live')">Live</button>
+      </div>
+      <div class="tcontent show" id="t-overview"></div>
+      <div class="tcontent" id="t-llmtrace"></div>
+      <div class="tcontent" id="t-live"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API = location.origin;
+    let projects = [], currentProject = null, currentEntries = [], selectedId = null;
+    let arTimer = null, liveLog = [], seenEntryIds = new Set(), lastProjectIds = '';
+    let cacheHistory = [];
+    let componentData = {};
+
+    async function get(p) { try { const r = await fetch(API + p); return await r.json(); } catch(e) { return null; } }
+    async function post(p, b) { try { const r = await fetch(API + p, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}); return await r.json(); } catch(e) { return null; } }
+    async function del(p) { try { const r = await fetch(API + p, {method:'DELETE'}); return await r.json(); } catch(e) { return null; } }
+
+    async function loadAll() {
+      const root = await get('/');
+      if (!root) { qs('#status').textContent='✗ disconnected'; qs('#status').className='status'; return; }
+      const reqCount = root.requests || 0;
+      const sessCount = root.active_sessions || 0;
+      qs('#status').textContent=`✓ ${root.provider||'proxy'} · mem:${root.memory?'ON':'OFF'}`;
+      qs('#status').className='status ok';
+
+      const res = await get('/api/projects');
+      projects = res?.projects || [];
+      renderTree();
+      if (projects.length > 0 && !currentProject) currentProject = projects[0].project_id;
+      if (currentProject) {
+        const r = await get(`/api/projects/${currentProject}/entries`);
+        currentEntries = r?.entries || [];
+        seenEntryIds = new Set(currentEntries.map(e=>e.id));
+      }
+      await renderOverview();
+    }
+
+    async function loadProject(pid) {
+      if (pid === currentProject) { closeProject(); return; }
+      currentProject = pid;
+      const r = await get(`/api/projects/${pid}/entries`);
+      currentEntries = r?.entries||[];
+      seenEntryIds = new Set(currentEntries.map(e=>e.id));
+      renderTree();
+      await renderOverview();
+    }
+
+    function renderTree() {
+      const f = qs('#filter').value.toLowerCase();
+      let html = '';
+      for (const p of projects) {
+        const isActive = p.project_id === currentProject;
+        const entries = isActive ? currentEntries : [];
+        const filtered = f ? entries.filter(e=>e.text.toLowerCase().includes(f)||(e.tags||'').toLowerCase().includes(f)) : entries;
+        const sess = {};
+        filtered.forEach(e => { const s=e.session_id||'default'; if(!sess[s]) sess[s]=[]; sess[s].push(e); });
+
+        html += `<div class="tproject">
+          <div class="tlabel${isActive?' active':''}" onclick="loadProject('${p.project_id}')">
+            <span class="ticon${isActive?' open':''}">▶</span>
+            <span class="tname">${esc(p.project_id)}</span>
+            <span class="tbadge">${p.count}</span>
+          </div>`;
+        if (isActive) {
+          html += '<div class="tsessions">';
+          for (const [sid, ents] of Object.entries(sess)) {
+            const short = sid.length > 18 ? sid.substring(0,18)+'…' : sid;
+            html += `<div class="tsession" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+              <span style="font-size:9px;color:var(--muted)">▸</span>
+              <span>${esc(short)}</span>
+              <span class="tbadge">${ents.length}</span>
+            </div><div class="tentries">`;
+            for (const e of ents) {
+              const pin=e.pinned?' pinned':'', act=e.id===selectedId?' active':'';
+              const icon=e.pinned?'📌 ':'';
+              const preview=e.text.substring(0,35)+(e.text.length>35?'…':'');
+              html += `<div class="tentry${pin}${act}" onclick="selectEntry(${e.id})">
+                <span class="tid">#${e.id}</span>
+                <span class="ttext">${icon}${esc(preview)}</span>
+              </div>`;
+            }
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      if (!projects.length) html = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">No projects yet.<br>Use Claude Code to start.</div>';
+      qs('#tree').innerHTML = html;
+    }
+
+    async function renderOverview() {
+      if (!currentProject) { qs('#t-overview').innerHTML='<div class="empty"><div class="empty-icon">◎</div>Select a project</div>'; return; }
+      const stats = await get(`/api/stats/${currentProject}`);
+      const notifs = await get(`/api/notifications?project=${currentProject}&limit=8`);
+      if (!stats) return;
+
+      componentData = {};
+      for (const e of currentEntries) {
+        const comp = e.component || 'general';
+        componentData[comp] = (componentData[comp]||0)+1;
+      }
+
+      let html = `<div class="sgrid">
+        <div class="scard hi">
+          <div class="slabel">Memories</div>
+          <div class="sval hi">${stats.total}</div>
+          <div class="ssub">${stats.pinned} pinned · ${stats.sessions} sessions</div>
+        </div>
+        <div class="scard">
+          <div class="slabel">Tokens Stored</div>
+          <div class="sval" style="font-size:16px">${(stats.total_tokens||0).toLocaleString()}</div>
+          <div class="ssub">~${Math.round((stats.total_tokens||0)/750)} KB context</div>
+        </div>
+        <div class="scard">
+          <div class="slabel">Last Save</div>
+          <div class="sval" style="font-size:13px">${stats.last_save ? stats.last_save.substring(11,16) : '—'}</div>
+          <div class="ssub">${stats.last_save ? stats.last_save.substring(0,10) : 'never'}</div>
+        </div>
+      </div>`;
+
+      if (Object.keys(componentData).length > 0) {
+        html += '<div class="section-title">Components</div>';
+        html += '<div class="comp-grid">';
+        const compLeft = `<div class="comp-bar-wrap" style="grid-column:1">`;
+        const compRight = `<div class="comp-bar-wrap" style="grid-column:2">`;
+        const total = Object.values(componentData).reduce((a,b)=>a+b,0);
+        const sorted = Object.entries(componentData).sort((a,b)=>b[1]-a[1]);
+        html += sorted.map(([comp, cnt]) => {
+          const pct = total > 0 ? Math.round(cnt/total*100) : 0;
+          return `<div class="comp-bar-wrap">
+            <div class="comp-item">
+              <div class="comp-label"><span>${compIcon(comp)} ${comp}</span><span>${cnt}</span></div>
+              <div class="comp-track"><div class="comp-fill" style="width:${pct}%;background:${compColor(comp)}"></div></div>
+            </div>
+          </div>`;
+        }).join('');
+        html += '</div>';
+      }
+
+      const events = notifs?.events || [];
+      if (events.length > 0) {
+        html += '<div class="section-title">Notifications</div>';
+        html += '<div class="notif-list">';
+        for (const ev of events) {
+          const t = new Date(ev.ts*1000).toTimeString().substring(0,8);
+          const dotClass = ev.type === 'save' ? 'save' : ev.type === 'cache' ? 'cache' : ev.type === 'error' ? 'error' : 'session';
+          html += `<div class="notif-item">
+            <div class="notif-dot ${dotClass}"></div>
+            <div class="notif-msg">${esc(ev.message)}</div>
+            <div class="notif-time">${t}</div>
+          </div>`;
+        }
+        html += '</div>';
+      }
+
+      html += '<div class="section-title">Memories <span class="badge-count">' + currentEntries.length + '</span></div>';
+      html += '<div class="tbl"><table><thead><tr><th>ID</th><th>Text</th><th>Component</th><th>Tags</th><th>📌</th><th>Age</th></tr></thead><tbody>';
+      for (const e of currentEntries.slice(0, 100)) {
+        let tags = '';
+        try { tags = (typeof e.tags==='string'?JSON.parse(e.tags):e.tags||[]).map(t=>`<span class="etag">${esc(t)}</span>`).join(' '); } catch(err) {}
+        const comp = e.component || 'general';
+        html += `<tr class="clickable" onclick="selectEntry(${e.id})">
+          <td style="color:var(--primaryDim)">${e.id}</td>
+          <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.text.substring(0,90))}</td>
+          <td><span class="comp-tag comp-${comp}">${compIcon(comp)} ${comp}</span></td>
+          <td>${tags}</td>
+          <td>${e.pinned?'📌':''}</td>
+          <td style="color:var(--muted);font-size:11px">${e.age||'—'}</td>
+        </tr>`;
+      }
+      html += '</tbody></table></div>';
+      const overview = qs('#t-overview');
+
+      const existingDetail = overview.querySelector('.edetail');
+      if (existingDetail) return;
+      overview.innerHTML = html;
+    }
+
+    function selectEntry(id) {
+      selectedId = id;
+      const e = currentEntries.find(x=>x.id===id);
+      if (!e) return;
+      renderTree();
+      let tags = '';
+      try { tags = (typeof e.tags==='string'?JSON.parse(e.tags):e.tags||[]).map(t=>`<span class="etag">${esc(t)}</span>`).join(' '); } catch(err) {}
+      const comp = e.component || 'general';
+      const detail = `<div class="edetail">
+        <div class="ehead">
+          <div>
+            <div class="eid">Memory #${e.id}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">${e.age||''} · session: ${(e.session_id||'—').substring(0,20)} · source: ${e.source}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span class="comp-tag comp-${comp}">${compIcon(comp)} ${comp}</span>
+            ${e.pinned?'<span class="etag pin">📌 PINNED</span>':''}
+          </div>
+        </div>
+        <div class="emeta">${tags}</div>
+        <div class="etext">${esc(e.text)}</div>
+        ${e.trigger?`<div style="margin-top:8px;font-size:11px;color:var(--muted)">Trigger: ${esc(e.trigger)}</div>`:''}
+        ${e.outcome?`<div style="font-size:11px;color:var(--muted)">Outcome: ${esc(e.outcome)}</div>`:''}
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Created: ${e.created_at} · ~${e.token_count} tokens</div>
+        <div class="eactions">
+          <button class="btn red" onclick="deleteEntry(${e.id})">🗑 Delete</button>
+          <button class="btn gold" onclick="pinEntry(${e.id})">${e.pinned?'📍 Unpin':'📌 Pin'}</button>
+          <button class="btn" onclick="navigator.clipboard.writeText(${JSON.stringify(e.text)});toast('Copied')">📋 Copy</button>
+          <button class="btn" onclick="selectedId=null;renderOverview();renderTree()">✕ Close</button>
+        </div>
+      </div>`;
+      showTab('overview');
+      const overview = qs('#t-overview');
+      const existing = overview.querySelector('.edetail');
+      if (existing) existing.outerHTML = detail;
+      else overview.insertAdjacentHTML('afterbegin', detail);
+    }
+
+    async function deleteEntry(id) {
+      if (!confirm('Delete this memory?')) return;
+      const r = await del(`/api/entries/${id}`);
+      if (r?.status==='deleted') {
+        toast('Deleted #'+id); currentEntries=currentEntries.filter(e=>e.id!==id); selectedId=null;
+        renderTree(); renderOverview();
+      } else toast('Delete failed');
+    }
+
+    async function pinEntry(id) {
+      const r = await post(`/api/entries/${id}/pin`, {});
+      if (r) {
+        const e = currentEntries.find(x=>x.id===id);
+        if (e) e.pinned = r.pinned;
+        toast(r.pinned?'Pinned':'Unpinned'); selectEntry(id); renderTree();
+      }
+    }
+
+    async function pollLive() {
+
+      const evRes = await get('/api/events');
+      if (evRes?.events) {
+        for (const ev of evRes.events) {
+          const _evKey = (ev.tool||ev.task||ev.type||'evt');
+          if (!liveLog.find(e=>e._id===ev.time+'_'+_evKey)) {
+            liveLog.unshift({...ev, _id: ev.time+'_'+_evKey});
+          }
+        }
+      }
+
+      const liveRes = await get('/api/live');
+      if (liveRes?.sessions?.length) {
+        for (const s of liveRes.sessions) {
+          const sid = s.project_id || 'unknown';
+          const lid = 'live_'+sid;
+
+          const existing = liveLog.find(e=>e._id===lid);
+          const content = `[${sid}] ${s.turns} calls · $${s.cost_usd.toFixed(4)} · cache_r=${(s.cache_read_tokens||0).toLocaleString()}`;
+          if (existing) {
+            existing.content = content;
+            existing.tokens = (s.cache_read_tokens||0) + (s.cache_write_tokens||0);
+            existing.time = new Date().toTimeString().substring(0,8);
+          } else {
+            liveLog.unshift({
+              time: new Date().toTimeString().substring(0,8),
+              type: 'session',
+              tool: 'live_stats',
+              tokens: (s.cache_read_tokens||0) + (s.cache_write_tokens||0),
+              content: content,
+              _id: lid
+            });
+          }
+        }
+      }
+
+      const projRes = await get('/api/projects');
+      const newProjects = projRes?.projects || [];
+      const newPids = newProjects.map(p=>p.project_id).join(',');
+      if (newPids !== lastProjectIds) {
+        lastProjectIds = newPids; projects = newProjects; renderTree();
+        if (!currentProject && projects.length>0) {
+          currentProject = projects[0].project_id;
+          const r = await get(`/api/projects/${currentProject}/entries`);
+          currentEntries = r?.entries||[];
+          seenEntryIds = new Set(currentEntries.map(e=>e.id));
+          renderTree(); renderOverview();
+        }
+      }
+      if (!currentProject) { renderLive(); return; }
+
+      const res = await get(`/api/projects/${currentProject}/entries?limit=10`);
+      let hasNew = false;
+      for (const e of (res?.entries||[])) {
+        if (!seenEntryIds.has(e.id)) {
+          seenEntryIds.add(e.id); hasNew=true;
+          const comp = e.component || 'general';
+          liveLog.unshift({
+            time: e.created_at?e.created_at.substring(11,19):new Date().toTimeString().substring(0,8),
+            type: e.source==='hook'?'hook':'mcp',
+            tool: e.source==='hook'?'auto_capture':'memory_save',
+            tokens: e.token_count||0,
+            content: `[${comp}] ${e.text.substring(0,80)}`,
+            memory: true, id: e.id
+          });
+        }
+      }
+      if (hasNew) {
+        const full = await get(`/api/projects/${currentProject}/entries`);
+        currentEntries = full?.entries||[];
+        renderTree();
+      }
+
+      renderOverview();
+      renderLive();
+    }
+
+    function renderLive() {
+      let html = `<div class="live-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="live-dot"></div>
+          <span style="font-size:12px;color:var(--muted)">Live Activity</span>
+        </div>
+        <button class="hbtn" onclick="liveLog=[];renderLive()">Clear</button>
+      </div>`;
+      if (!liveLog.length) { html += '<div class="empty" style="height:150px"><div class="empty-icon">○</div>Waiting for activity…</div>'; }
+      else {
+        for (const ev of liveLog.slice(0,50)) {
+          const badgeClass = ev.type==='hook'?'hook':ev.type==='mcp'?'mcp':ev.memory?'mem':'auto';
+          html += `<div class="levent">
+            <div class="ltime">${ev.time||'—'}</div>
+            <div class="lbadge ${badgeClass}">${ev.tool||ev.task||ev.type||'event'}</div>
+            <div style="flex:1">
+              <div class="lcontent">${esc(ev.content||ev.model||ev.status||'')}</div>
+              ${ev.tokens?`<div class="ltokens">~${ev.tokens} tokens</div>`:''}
+            </div>
+          </div>`;
+        }
+      }
+      qs('#t-live').innerHTML = html;
+    }
+
+    function compColor(comp) {
+      return {auth:'#F87171',api:'#60A5FA',db:'#4ADE80',ui:'#B388FF',infra:'#fb923c',test:'#2dd4bf',hooks:'#facc15',utils:'#8E8EA0',deps:'#a78bfa'}[comp]||'#7C4DFF';
+    }
+    function compIcon(comp) {
+      return {auth:'🔐',api:'🔗',db:'🗄',ui:'🎨',infra:'⚙️',test:'🧪',hooks:'🪝',utils:'🛠',deps:'📦',general:'💡'}[comp]||'💡';
+    }
+    function showTab(id) {
+      document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['overview','llmtrace','live'][i]===id));
+      document.querySelectorAll('.tcontent').forEach(t => t.classList.toggle('show', t.id==='t-'+id));
+      if (id==='live') renderLive();
+      if (id==='llmtrace') renderLlmTrace();
+    }
+    function closeProject() { currentProject=null; currentEntries=[]; selectedId=null; renderTree(); renderOverview(); }
+    async function refresh() { toast('Refreshing…'); await loadAll(); toast('Done'); }
+    function toggleAR() {
+      if (arTimer || _sseSource) { clearInterval(arTimer); arTimer=null; stopSSE(); qs('#arBtn').textContent='Auto: OFF'; qs('#arBtn').classList.remove('active'); }
+      else { startSSE(); qs('#arBtn').textContent='Auto: ON'; qs('#arBtn').classList.add('active'); pollLive(); }
+    }
+
+    let _sseSource = null;
+    function startSSE() {
+      if (_sseSource) return; // already connected
+      try {
+        _sseSource = new EventSource('/api/events/stream');
+        _sseSource.onmessage = function(e) {
+          try {
+            const ev = JSON.parse(e.data);
+            if (ev.project_id && currentProject && ev.project_id !== currentProject) return;
+            liveLog.unshift({
+              time: ev.ts ? new Date(ev.ts*1000).toTimeString().substring(0,8) : new Date().toTimeString().substring(0,8),
+              type: ev.type || 'api',
+              tool: ev.model || ev.type || 'response',
+              tokens: (ev.input_tokens||0)+(ev.output_tokens||0)+(ev.cache_read||0)+(ev.cache_write||0),
+              content: `[${ev.model||'api'}] in=${ev.input_tokens||0} out=${ev.output_tokens||0} cache_r=${ev.cache_read||0}`,
+              _id: (ev.ts||Date.now())+'_sse_'+Math.random()
+            });
+            renderLive();
+
+            renderOverview();
+          } catch(err) {}
+        };
+        _sseSource.onerror = function() {
+
+        };
+      } catch(e) {
+
+        if (!arTimer) arTimer = setInterval(()=>pollLive(), 3000);
+      }
+    }
+    function stopSSE() {
+      if (_sseSource) { _sseSource.close(); _sseSource = null; }
+    }
+
+    function qs(s) { return document.querySelector(s); }
+    function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function toast(m) { const t=qs('#toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
+
+    function tokensToDollars(inputTokens, outputTokens, cacheRead, cacheWrite) {
+
+      return ((inputTokens||0)/1e6)*3.00 + ((outputTokens||0)/1e6)*15.00
+           + ((cacheRead||0)/1e6)*0.30 + ((cacheWrite||0)/1e6)*3.75;
+    }
+
+    let _traceFilter = 'all'; // all | failed | fallback
+    async function renderLlmTrace() {
+      const data = await get('/api/llm-trace?limit=100');
+      if (!data) { qs('#t-llmtrace').innerHTML='<div class="empty"><div class="empty-icon">🔍</div>Cannot load trace data</div>'; return; }
+
+      const stats = data.stats || {};
+      const events = data.events || [];
+      const byTask = data.by_task || {};
+
+      let html = '';
+
+      const successColor = (stats.success_rate||100) >= 90 ? 'green' : (stats.success_rate||100) >= 70 ? 'orange' : 'red';
+      const fallbackColor = (stats.fallback_rate||0) <= 5 ? 'green' : (stats.fallback_rate||0) <= 20 ? 'orange' : 'red';
+      html += `<div class="trace-stats">
+        <div class="scard hi">
+          <div class="slabel">Total Calls</div>
+          <div class="sval hi">${stats.total_calls||0}</div>
+          <div class="ssub">since startup</div>
+        </div>
+        <div class="scard ${successColor}">
+          <div class="slabel">Success Rate</div>
+          <div class="sval ${successColor}">${(stats.success_rate||100).toFixed(1)}%</div>
+          <div class="ssub">${stats.successes||0} ok · ${stats.failures||0} fail</div>
+        </div>
+        <div class="scard ${fallbackColor}">
+          <div class="slabel">Fallback Rate</div>
+          <div class="sval ${fallbackColor}">${(stats.fallback_rate||0).toFixed(1)}%</div>
+          <div class="ssub">${stats.fallbacks||0} fallbacks</div>
+        </div>
+      </div>`;
+
+      const tasks = Object.entries(byTask);
+      if (tasks.length > 0) {
+        html += '<div class="section-title">Per-Task Breakdown</div>';
+        html += '<table class="task-table"><thead><tr><th>Task</th><th>Calls</th><th>✓</th><th>✗</th><th>⚡ Fallbacks</th><th>Success Rate</th></tr></thead><tbody>';
+        for (const [task, s] of tasks.sort((a,b) => b[1].calls - a[1].calls)) {
+          const rate = s.calls > 0 ? Math.round(s.successes / s.calls * 100) : 100;
+          const barColor = rate >= 90 ? 'var(--green)' : rate >= 70 ? 'var(--orange)' : 'var(--red)';
+          html += `<tr>
+            <td style="color:var(--primaryLight);font-weight:600">${esc(task)}</td>
+            <td>${s.calls}</td>
+            <td style="color:var(--green)">${s.successes}</td>
+            <td style="color:${s.failures>0?'var(--red)':'var(--muted)'}">${s.failures}</td>
+            <td style="color:${s.fallbacks>0?'var(--red)':'var(--muted)'}">${s.fallbacks}</td>
+            <td>${rate}% <span class="rate-bar"><span class="rate-fill" style="width:${rate}%;background:${barColor}"></span></span></td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+      }
+
+      html += `<div class="section-title">Event Timeline <span class="badge-count">${events.length}</span></div>`;
+      html += `<div class="trace-filter">
+        <button class="trace-fbtn${_traceFilter==='all'?' active':''}" onclick="_traceFilter='all';renderLlmTrace()">All</button>
+        <button class="trace-fbtn${_traceFilter==='failed'?' active':''}" onclick="_traceFilter='failed';renderLlmTrace()">❌ Failed</button>
+        <button class="trace-fbtn${_traceFilter==='fallback'?' active':''}" onclick="_traceFilter='fallback';renderLlmTrace()">⚡ Fallbacks</button>
+      </div>`;
+
+      let filtered = events;
+      if (_traceFilter === 'failed') filtered = events.filter(e => e.status !== 'OK' && e.status !== 'working...');
+      if (_traceFilter === 'fallback') filtered = events.filter(e => e.fallback_triggered);
+
+      if (filtered.length === 0) {
+        html += '<div class="empty" style="height:120px"><div class="empty-icon">✓</div>No matching events</div>';
+      } else {
+        for (const ev of filtered.slice(0, 80)) {
+          const isFail = ev.status === 'FAILED';
+          const isWorking = ev.status === 'working...';
+          const isOk = ev.status === 'OK';
+          const statusClass = isOk ? 'ok' : isFail ? 'fail' : 'working';
+          const eventClass = ev.fallback_triggered ? 'fallback' : isWorking ? 'working' : '';
+
+          html += `<div class="trace-event ${eventClass}">`;
+          html += `<div class="trace-head">`;
+          html += `<span class="trace-status ${statusClass}">${isOk?'✓ OK':isFail?'✗ FAILED':isWorking?'⏳ WORKING':'⚠ '+esc(ev.status||'')}</span>`;
+          html += `<span class="trace-task">${esc(ev.task||'unknown')}</span>`;
+          html += `<span class="trace-model">${esc(ev.model||'')}</span>`;
+          if (ev.fallback_triggered) html += '<span style="color:var(--red);font-size:10px;font-weight:700">⚡ FALLBACK</span>';
+          html += `<span style="margin-left:auto;font-size:10px;color:var(--muted)">${ev.time||''}</span>`;
+          html += '</div>';
+
+          html += '<div class="trace-meta">';
+          if (ev.latency_ms !== undefined) html += `<span>⏱ ${ev.latency_ms}ms</span>`;
+          if (ev.input_tokens_est) html += `<span>📥 ~${ev.input_tokens_est}tok</span>`;
+          if (ev.output_tokens_est) html += `<span>📤 ~${ev.output_tokens_est}tok</span>`;
+          if (ev.http_status) html += `<span>HTTP ${ev.http_status}</span>`;
+          if (ev.final_attempt) html += `<span>attempt ${ev.final_attempt}/3</span>`;
+          if (ev.responded_model && ev.responded_model !== ev.model) html += `<span>→ ${esc(ev.responded_model)}</span>`;
+          html += '</div>';
+
+          if (ev.error) {
+            html += `<div style="margin-top:4px;padding:4px 8px;background:rgba(248,113,113,.1);border-radius:4px;font-size:10px;color:var(--red)">${esc(ev.error)}</div>`;
+          }
+
+          const attempts = ev.attempts || [];
+          if (attempts.length > 1) {
+            html += '<div class="trace-attempts">';
+            html += '<div style="color:var(--muted);margin-bottom:2px">Attempts:</div>';
+            for (const a of attempts) {
+              const aClass = a.status === 'OK' ? 'ok' : a.status === 'FAIL' ? 'fail' : 'retry';
+              html += `<div class="trace-attempt ${aClass}">`;
+              html += `<span>#${a.attempt}</span>`;
+              html += `<span>${a.status}</span>`;
+              if (a.latency_ms !== undefined) html += `<span>${a.latency_ms}ms</span>`;
+              if (a.http_status) html += `<span>HTTP ${a.http_status}</span>`;
+              if (a.error) html += `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.error)}</span>`;
+              html += '</div>';
+            }
+            html += '</div>';
+          }
+
+          html += '</div>';
+        }
+      }
+
+      qs('#t-llmtrace').innerHTML = html;
+    }
+
+    let _healthTimer = null;
+    async function updateHealth() {
+      try {
+        const h = await get('/api/health');
+        if (!h) return;
+        const dot = qs('#healthDot'), lbl = qs('#healthLabel');
+        dot.className = 'health-dot ' + (h.status||'unknown');
+        const llmName = (h.llm_provider || 'llm').toUpperCase();
+        const ms = (h.llm_ms || h.groq_ms) ? ` · ${h.llm_ms || h.groq_ms}ms` : '';
+        const reqs = h.total_requests || 0;
+        const llmOk = h.llm_ok !== undefined ? h.llm_ok : h.groq_ok;
+        lbl.textContent = h.status==='ok' ? `✓ DB:${h.db_entries} ${llmName}${ms}` : h.status;
+        dot.title = `DB:${h.db_ok} Chroma:${h.chroma_ok} ${llmName}:${llmOk}`;
+      } catch(e) {}
+    }
+    _healthTimer = setInterval(updateHealth, 120000);
+
+    function renderInjectionPanel(data) {
+      if (!data || !data.entries) return '';
+      const full = (data.entries||[]).filter(e=>e.tier==='full').length;
+      const head = (data.entries||[]).filter(e=>e.tier==='headline').length;
+      const skip = (data.entries||[]).filter(e=>e.tier==='suppressed').length;
+      const total = full+head+skip || 1;
+      return `<div class="inj-panel">
+        <div class="section-title">Last Injection</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">
+          ${data.tokens_injected||0} tokens · ${full+head} entries · ${new Date(data.ts||0).toTimeString().substring(0,8)}
+        </div>
+        <div class="inj-bar">
+          <div class="full" style="width:${full/total*100}%" title="${full} full"></div>
+          <div class="head" style="width:${head/total*100}%" title="${head} headline"></div>
+          <div class="skip" style="width:${skip/total*100}%" title="${skip} suppressed"></div>
+        </div>
+        <div class="inj-legend">
+          <span class="l-full">Full (${full})</span>
+          <span class="l-head">Headline (${head})</span>
+          <span class="l-skip">Suppressed (${skip})</span>
+        </div>
+      </div>`;
+    }
+
+    let _initDone = false;
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (_initDone) return;
+        _initDone = true;
+        loadAll();
+        updateHealth();
+
+        startSSE();
+        if (!arTimer) arTimer = setInterval(()=>pollLive(), 3000);
+        try { qs('#arBtn').textContent='Auto: ON'; qs('#arBtn').classList.add('active'); } catch(e){}
+      });
+    } else {
+      _initDone = true;
+      loadAll();
+      updateHealth();
+
+      startSSE();
+      if (!arTimer) arTimer = setInterval(()=>pollLive(), 3000);
+      try { qs('#arBtn').textContent='Auto: ON'; qs('#arBtn').classList.add('active'); } catch(e){}
+    }
+  </script>
+</body>
+</html>

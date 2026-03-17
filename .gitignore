@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# IDEs
+.claude/
+.cursor/
+.vscode/
+.idea/
+
+# Testing & Linting
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/.pytest_cache/
+
+# Project Specific
+.env
+*.log
+server.log
+data/
+agent_workspace/
+.antigravity/
+.serena
+tmp/
+**/CLAUDE.md
+plugin/scripts/*.cjs
+package.json
