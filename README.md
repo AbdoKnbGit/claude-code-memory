@@ -313,7 +313,7 @@ Note that the month-4 jump reflects switching from Sonnet to Opus — Opus costs
 
 > Complete request flow from Claude Code through every proxy layer to the Anthropic API and back. Open the image in a new tab for full resolution and zoom.
 
-<img src="docs/cc-memory-clean-architecture.png" alt="claude-code-memory full architecture diagram" style="max-width:100%; cursor:zoom-in;" />
+<img src="docs/cc-memory-complete-architecture.png" alt="claude-code-memory full architecture diagram" style="max-width:100%; cursor:zoom-in;" />
 
 </details>
 
@@ -423,13 +423,11 @@ Use Git Bash or WSL, not CMD. Handled automatically by setup.py.
 AGPL 3.0 — see [LICENSE](LICENSE).
 
 ---
-
-
-*Local Docker · No cloud dependency · Anthropic cache-optimized · [AbdoKnbGit/claude-code-memory](https://github.com/AbdoKnbGit/claude-code-memory)*
-
 ## Contributors
 
 | | Name | Role |
 |---|---|---|
-| 👤 | [AbdoKnbGit](https://github.com/AbdoKnbGit) | Creator · Architecture · Vision |
-| 🤖 | [Anthropic](https://github.com/anthropics) (Claude) | AI Pair Programmer · Code Generation · Bug Fixing |
+| 👤 | [Your Name](https://github.com/AbdoKnbGit) | Creator & Developer |
+| 🤖 | Claude (Anthropic) | AI Pair Programmer |
+
+*Local Docker · No cloud dependency · Anthropic cache-optimized · [AbdoKnbGit/claude-code-memory](https://github.com/AbdoKnbGit/claude-code-memory)*
